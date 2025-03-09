@@ -1,12 +1,9 @@
 const express = require("express");
-const Web3 = require("web3");
+const { Web3 } = require("web3");
 const app = express();
 
-// BSC public RPC endpoint (you could use your own node instead)
-const BSC_RPC_URL = "https://bsc-dataseed.binance.org/";
-// USDT BEP20 contract address
+const BSC_RPC_URL = "https://rpc.ankr.com/bsc";
 const USDT_BEP20_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
-// Minimal USDT ABI for Transfer event
 const USDT_ABI = [
   {
     "anonymous": false,
@@ -20,7 +17,6 @@ const USDT_ABI = [
   }
 ];
 
-// Initialize Web3
 const web3 = new Web3(BSC_RPC_URL);
 const usdtContract = new web3.eth.Contract(USDT_ABI, USDT_BEP20_ADDRESS);
 
@@ -59,12 +55,13 @@ app.get("/usdt/trc20", async (req, res) => {
 
 app.get("/usdt/bep20", async (req, res) => {
   try {
-    // Get latest block number
-    const latestBlock = await web3.eth.getBlockNumber();
-    
-    // Get past Transfer events (last 100 blocks as an example)
+    // Handle BigInt for block number
+    const latestBlockBigInt = await web3.eth.getBlockNumber();
+    console.log('Latest Block Type:', typeof latestBlockBigInt, 'Value:', latestBlockBigInt);
+    const latestBlock = Number(latestBlockBigInt);
+
     const events = await usdtContract.getPastEvents("Transfer", {
-      fromBlock: latestBlock - 100,
+      fromBlock: latestBlock - 10,
       toBlock: latestBlock
     });
 
@@ -72,10 +69,25 @@ app.get("/usdt/bep20", async (req, res) => {
       throw new Error("No recent transactions found");
     }
 
-    // Get the most recent transfer
     const latestTransfer = events[events.length - 1];
+    /*
+    console.log('Latest Transfer:', JSON.stringify(latestTransfer, (key, value) =>
+      typeof value === 'bigint' ? value.toString() : value
+    ));
+    */
+
     const txid = latestTransfer.transactionHash;
-    const amount = parseInt(latestTransfer.returnValues.value) / 1e18;
+    console.log('Transaction Hash:', txid);
+
+    // Ensure value is properly handled
+    const amountRaw = latestTransfer.returnValues.value;
+    console.log('Raw Amount Type:', typeof amountRaw, 'Value:', amountRaw);
+
+    // Convert BigInt to number safely
+    const amountBigInt = BigInt(amountRaw);
+    const decimals = BigInt(10**18);
+    const amount = Number(amountBigInt) / Number(decimals);
+    console.log('Calculated Amount:', amount);
 
     res.status(200).send({
       results: {
@@ -105,6 +117,7 @@ app.get("/usdt/bep20", async (req, res) => {
 // Export for Vercel
 module.exports = app;
 
+console.log(process.env.NODE_ENV);
 // Local development
 if (process.env.NODE_ENV !== 'production') {
   const port = process.env.PORT || 3000;
