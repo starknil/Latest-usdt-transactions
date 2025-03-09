@@ -1,14 +1,33 @@
-const axios = require("axios");
 const express = require("express");
+const Web3 = require("web3");
 const app = express();
 
-const BSCSCAN_API_KEY = "NSE24ZP8DHCMS6UVSAUKPGEINMDM1634YY";
+// BSC public RPC endpoint (you could use your own node instead)
+const BSC_RPC_URL = "https://bsc-dataseed.binance.org/";
+// USDT BEP20 contract address
 const USDT_BEP20_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
+// Minimal USDT ABI for Transfer event
+const USDT_ABI = [
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "from", "type": "address" },
+      { "indexed": true, "name": "to", "type": "address" },
+      { "indexed": false, "name": "value", "type": "uint256" }
+    ],
+    "name": "Transfer",
+    "type": "event"
+  }
+];
+
+// Initialize Web3
+const web3 = new Web3(BSC_RPC_URL);
+const usdtContract = new web3.eth.Contract(USDT_ABI, USDT_BEP20_ADDRESS);
 
 app.get("/usdt/trc20", async (req, res) => {
   try {
-    const result = await axios.get("https://apilist.tronscan.org/api/token_trc20/transfers?limit=1");
-    const data = result.data;
+    const result = await fetch("https://apilist.tronscan.org/api/token_trc20/transfers?limit=1");
+    const data = await result.json();
     const txid = data.token_transfers[0].transaction_id;
     const amount = data.token_transfers[0].trigger_info.parameter._value / 1000000;
     const currency = data.token_transfers[0].tokenInfo.tokenAbbr;
@@ -28,6 +47,7 @@ app.get("/usdt/trc20", async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('TRC20 Error:', error.message);
     res.status(500).send({
       results: {
         error: "An error occurred in getting the txid, Send error to @bahdboi_kingstar on telegram",
@@ -39,24 +59,28 @@ app.get("/usdt/trc20", async (req, res) => {
 
 app.get("/usdt/bep20", async (req, res) => {
   try {
-    const result = await axios.get(
-      `https://api.bscscan.com/api?module=account&action=tokentx&contractaddress=${USDT_BEP20_ADDRESS}&page=1&offset=1&sort=desc&apikey=${BSCSCAN_API_KEY}`
-    );
-    const data = result.data;
+    // Get latest block number
+    const latestBlock = await web3.eth.getBlockNumber();
+    
+    // Get past Transfer events (last 100 blocks as an example)
+    const events = await usdtContract.getPastEvents("Transfer", {
+      fromBlock: latestBlock - 100,
+      toBlock: latestBlock
+    });
 
-
-    if (data.status !== "1") {
-      throw new Error("API returned an error");
+    if (!events || events.length === 0) {
+      throw new Error("No recent transactions found");
     }
 
-    const txid = data.result[0].hash;
-    const amount = parseInt(data.result[0].value) / 10**18; // USDT has 18 decimals on BSC
-    const currency = "USDT";
+    // Get the most recent transfer
+    const latestTransfer = events[events.length - 1];
+    const txid = latestTransfer.transactionHash;
+    const amount = parseInt(latestTransfer.returnValues.value) / 1e18;
 
     res.status(200).send({
       results: {
         error: "ok",
-        currency: currency,
+        currency: "USDT",
         data: {
           transaction: {
             txid: txid,
@@ -68,17 +92,23 @@ app.get("/usdt/bep20", async (req, res) => {
       }
     });
   } catch (error) {
-    console.log(error);
+    console.error('BEP20 Error:', error.message);
     res.status(500).send({
       results: {
-        error: "An error occurred in getting the txid, Send error to @bahdboi_kingstar on telegram",
+        error: `An error occurred: ${error.message}. Contact @bahdboi_kingstar on telegram`,
         data: 'null'
       }
     });
   }
 });
 
-const port = 3000;
-app.listen(port, () => {
-  console.log("Running on port: " + port);
-});
+// Export for Vercel
+module.exports = app;
+
+// Local development
+if (process.env.NODE_ENV !== 'production') {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => {
+    console.log("Running on port: " + port);
+  });
+}
