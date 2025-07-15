@@ -57,7 +57,9 @@ app.get("/usdt/bep20", async (req, res) => {
   try {
     // Handle BigInt for block number
     const latestBlockBigInt = await web3.eth.getBlockNumber();
-    console.log('Latest Block Type:', typeof latestBlockBigInt, 'Value:', latestBlockBigInt);
+    //console.log('Latest Block Type:', typeof latestBlockBigInt, 'Value:', latestBlockBigInt);
+
+console.log(latestBlockBigInt)
     const latestBlock = Number(latestBlockBigInt);
 
     const events = await usdtContract.getPastEvents("Transfer", {
