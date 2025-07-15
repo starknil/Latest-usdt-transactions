@@ -2,7 +2,8 @@ const express = require("express");
 const { Web3 } = require("web3");
 const app = express();
 
-const BSC_RPC_URL = "https://rpc.ankr.com/bsc";
+let BSC_RPC_URL = "https://rpc.ankr.com/bsc/a7f0d40be4bdaf75bb028f6cf58a3268052b88810aab42c0ff8bd70f9c37794a";
+
 const USDT_BEP20_ADDRESS = "0x55d398326f99059fF775485246999027B3197955";
 const USDT_ABI = [
   {
@@ -53,43 +54,35 @@ app.get("/usdt/trc20", async (req, res) => {
   }
 });
 
+
+
 app.get("/usdt/bep20", async (req, res) => {
   try {
-    // Handle BigInt for block number
+    
     const latestBlockBigInt = await web3.eth.getBlockNumber();
-    //console.log('Latest Block Type:', typeof latestBlockBigInt, 'Value:', latestBlockBigInt);
 
-console.log(latestBlockBigInt)
     const latestBlock = Number(latestBlockBigInt);
 
     const events = await usdtContract.getPastEvents("Transfer", {
-      fromBlock: latestBlock - 10,
+      fromBlock: latestBlock - 1,
       toBlock: latestBlock
     });
+
+    console.log(events.length);
 
     if (!events || events.length === 0) {
       throw new Error("No recent transactions found");
     }
 
     const latestTransfer = events[events.length - 1];
-    /*
-    console.log('Latest Transfer:', JSON.stringify(latestTransfer, (key, value) =>
-      typeof value === 'bigint' ? value.toString() : value
-    ));
-    */
 
     const txid = latestTransfer.transactionHash;
-    console.log('Transaction Hash:', txid);
 
-    // Ensure value is properly handled
     const amountRaw = latestTransfer.returnValues.value;
-    console.log('Raw Amount Type:', typeof amountRaw, 'Value:', amountRaw);
 
-    // Convert BigInt to number safely
     const amountBigInt = BigInt(amountRaw);
     const decimals = BigInt(10**18);
     const amount = Number(amountBigInt) / Number(decimals);
-    console.log('Calculated Amount:', amount);
 
     res.status(200).send({
       results: {
@@ -106,7 +99,7 @@ console.log(latestBlockBigInt)
       }
     });
   } catch (error) {
-    console.error('BEP20 Error:', error.message);
+    console.error('BEP20 Error:', error);
     res.status(500).send({
       results: {
         error: `An error occurred: ${error.message}. Contact @bahdboi_kingstar on telegram`,
@@ -116,11 +109,10 @@ console.log(latestBlockBigInt)
   }
 });
 
-// Export for Vercel
+
 module.exports = app;
 
-console.log(process.env.NODE_ENV);
-// Local development
+
 if (process.env.NODE_ENV !== 'production') {
   const port = process.env.PORT || 3000;
   app.listen(port, () => {
