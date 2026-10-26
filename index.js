@@ -38,7 +38,7 @@ app.get("/usdt/trc20", async (req, res) => {
             txid: txid,
             amount: amount
           },
-          owner: '@bahdboi_kingstar on telegram',
+          owner: '@gill_728 on telegram',
           network: 'TRON (TRC20)'
         }
       }
@@ -47,7 +47,7 @@ app.get("/usdt/trc20", async (req, res) => {
     console.error('TRC20 Error:', error.message);
     res.status(500).send({
       results: {
-        error: "An error occurred in getting the txid, Send error to @bahdboi_kingstar on telegram",
+        error: "An error occurred in getting the txid, Send error to @gill_728 on telegram",
         data: 'null'
       }
     });
@@ -93,7 +93,7 @@ app.get("/usdt/bep20", async (req, res) => {
             txid: txid,
             amount: amount
           },
-          owner: '@bahdboi_kingstar on telegram',
+          owner: '@gill_728 on telegram',
           network: 'BSC (BEP20)'
         }
       }
@@ -102,7 +102,7 @@ app.get("/usdt/bep20", async (req, res) => {
     console.error('BEP20 Error:', error);
     res.status(500).send({
       results: {
-        error: `An error occurred: ${error.message}. Contact @bahdboi_kingstar on telegram`,
+        error: `An error occurred: ${error.message}. Contact @gill_728 on telegram`,
         data: 'null'
       }
     });
